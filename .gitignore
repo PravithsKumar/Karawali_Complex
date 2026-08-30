@@ -1,0 +1,7 @@
+venv/
+__pycache__/
+*.pyc
+.env
+karavali_complex.db
+.vscode/
+.idea/
