@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ shop.name }} - Shop Ledger{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Shopkeeper Header Banner -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 text-white p-6 sm:p-8 rounded-3xl shadow-xl relative overflow-hidden">
+        <div class="absolute -right-8 -bottom-8 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
+
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-black text-2xl text-white shadow-lg shadow-emerald-500/30">
+                    {{ shop.shop_number }}
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs uppercase tracking-widest text-emerald-400 font-bold">Shop #{{ shop.shop_number }}</span>
+                        <span class="text-xs bg-white/10 text-white/80 px-2 py-0.5 rounded-full">Active Ledger</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-0.5">{{ shop.name }}</h1>
+                    <p class="text-xs text-slate-300 mt-1">Karavali Complex • Tenant: {{ shop.tenant_name or 'Shopkeeper' }}</p>
+                </div>
+            </div>
+
+            <!-- Month Selector -->
+            <form method="GET" action="{{ url_for('vendor.shop_portal', shop_id=shop.id) }}" class="flex items-center gap-2 bg-white/10 backdrop-blur-md p-1.5 rounded-2xl border border-white/10 text-white">
+                <select name="month" onchange="this.form.submit()" class="bg-transparent text-xs sm:text-sm font-bold text-white px-2 py-1 outline-none cursor-pointer">
+                    {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == selected_month %}selected{% endif %} class="text-slate-900">{{ m|month_name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" onchange="this.form.submit()" class="bg-transparent text-xs sm:text-sm font-bold text-white px-2 py-1 outline-none cursor-pointer">
+                    {% for y in range(current_year - 2, current_year + 3) %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %} class="text-slate-900">{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Rent Progress Bar inside Banner -->
+        <div class="mt-6 pt-5 border-t border-white/10">
+            <div class="flex justify-between items-baseline text-xs mb-2">
+                <span class="text-slate-300 font-medium">{{ selected_month|month_name }} Rent Target: <span class="font-bold text-white">{{ summary.target_rent|inr }}</span></span>
+                <span class="font-black text-emerald-400 text-sm">{{ summary.total_paid_this_month|inr }} Paid ({{ summary.percentage_paid }}%)</span>
+            </div>
+            <div class="w-full bg-white/10 rounded-full h-3 overflow-hidden p-0.5">
+                <div class="bg-gradient-to-r from-emerald-400 to-teal-300 h-2 rounded-full transition-all duration-500 shadow-sm shadow-emerald-400/50" style="width: {{ summary.percentage_paid }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1-Tap Nudge Reminder Box -->
+    <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl {% if has_nudged_today %}bg-amber-100 text-amber-700{% else %}bg-emerald-50 text-emerald-600{% endif %} flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-bell text-lg"></i>
+            </div>
+            <div>
+                <h3 class="font-bold text-slate-900 text-sm">Paid today but ledger not updated?</h3>
+                <p class="text-xs text-slate-500 mt-0.5">
+                    {% if today_payment %}
+                        <span class="text-emerald-600 font-bold">✓ Today's payment ({{ today_payment.amount|inr }}) is already recorded!</span>
+                    {% elif has_nudged_today %}
+                        <span class="text-amber-600 font-bold">✓ Nudge sent to Admin for today. Waiting for update.</span>
+                    {% else %}
+                        Tap below to send an instant reminder to the building owner to log today’s payment.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <div>
+            {% if has_nudged_today %}
+                <button type="button" disabled class="px-4 py-2.5 bg-amber-100 text-amber-800 text-xs font-bold rounded-xl cursor-not-allowed flex items-center gap-2">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Nudge Sent Today</span>
+                </button>
+            {% else %}
+                <form method="POST" action="{{ url_for('vendor.send_nudge', shop_id=shop.id) }}">
+                    <button type="submit" class="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl shadow-md shadow-slate-900/10 transition flex items-center gap-2">
+                        <i class="fa-solid fa-bell text-amber-400"></i>
+                        <span>Nudge Admin</span>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Financial Status Cards Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Paid ({{ selected_month|month_name }})</span>
+            <div class="text-xl font-extrabold text-emerald-600 mt-1">{{ summary.total_paid_this_month|inr }}</div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">This Month Remaining</span>
+            <div class="text-xl font-extrabold {% if summary.this_month_remaining > 0 %}text-slate-900{% else %}text-emerald-600{% endif %} mt-1">
+                {{ summary.this_month_remaining|inr }}
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Past Pending Dues</span>
+            <div class="text-xl font-extrabold {% if summary.past_pending > 0 %}text-rose-600{% else %}text-slate-400{% endif %} mt-1">
+                {{ summary.past_pending|inr }}
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Advance Credit</span>
+            <div class="text-xl font-extrabold {% if summary.advance > 0 %}text-emerald-600{% else %}text-slate-400{% endif %} mt-1">
+                {{ summary.advance|inr }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Date-by-Date Daily Payments History -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-slate-900 text-base">Daily Payment History</h3>
+                <p class="text-xs text-slate-500">Receipts and logs for {{ selected_month|month_name }} {{ selected_year }}</p>
+            </div>
+            <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
+                {{ payments|length }} Payments
+            </span>
+        </div>
+
+        {% if payments %}
+            <div class="divide-y divide-slate-100">
+                {% for p in payments %}
+                    <div class="p-4 sm:px-6 hover:bg-slate-50/70 transition flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3.5">
+                            <div class="w-10 h-10 rounded-xl {% if p.payment_mode == 'UPI' %}bg-blue-50 text-blue-600{% else %}bg-emerald-50 text-emerald-600{% endif %} flex items-center justify-center font-bold text-sm">
+                                {% if p.payment_mode == 'UPI' %}
+                                    <i class="fa-solid fa-mobile-screen"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="font-bold text-slate-900 text-sm">{{ p.payment_date|format_date }}</div>
+                                <div class="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                                    <span>Via {{ p.payment_mode }}</span>
+                                    {% if p.notes %}
+                                        <span>•</span>
+                                        <span class="italic text-slate-500">{{ p.notes }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-right">
+                            <div class="font-black text-emerald-600 text-base sm:text-lg">
+                                +{{ p.amount|inr }}
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-medium">Logged by Admin</span>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="py-12 text-center text-slate-400">
+                <i class="fa-solid fa-calendar-xmark text-3xl mb-2 text-slate-300 block"></i>
+                <p class="text-sm font-medium">No payments recorded in {{ selected_month|month_name }} {{ selected_year }}.</p>
+                <p class="text-xs text-slate-400 mt-1">If you have made a payment, use the Nudge button above to remind the admin.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

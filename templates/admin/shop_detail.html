@@ -1,0 +1,304 @@
+{% extends 'base.html' %}
+
+{% block title %}Shop {{ shop.shop_number }}: {{ shop.name }} - Admin{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header with Breadcrumb -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('admin.dashboard', year=selected_year, month=selected_month) }}" class="w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-md bg-slate-900 text-white font-bold text-xs flex items-center justify-center">
+                        {{ shop.shop_number }}
+                    </span>
+                    <h1 class="text-xl font-bold text-slate-900">{{ shop.name }}</h1>
+                    {% if shop.is_active %}
+                        <span class="bg-emerald-100 text-emerald-800 text-[11px] font-semibold px-2 py-0.5 rounded-full">Active</span>
+                    {% else %}
+                        <span class="bg-slate-100 text-slate-600 text-[11px] font-semibold px-2 py-0.5 rounded-full">Vacant</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-slate-500 mt-0.5">Tenant: {{ shop.tenant_name or 'Not set' }} • Phone: {{ shop.phone or '-' }} • PIN: <span class="font-mono font-bold">{{ shop.pin }}</span></p>
+            </div>
+        </div>
+
+        <!-- Month Filter -->
+        <form method="GET" action="{{ url_for('admin.shop_detail', shop_id=shop.id) }}" class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+            <select name="month" onchange="this.form.submit()" class="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer">
+                {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m|month_name }}</option>
+                {% endfor %}
+            </select>
+            <select name="year" onchange="this.form.submit()" class="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer">
+                {% for y in range(current_year - 2, current_year + 3) %}
+                    <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <!-- Active Nudge Alert (If any) -->
+    {% if pending_nudge %}
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-amber-200/80 flex items-center justify-center text-amber-700">
+                    <i class="fa-solid fa-bell text-lg animate-bounce"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-sm">Vendor Nudge Received for Today!</h4>
+                    <p class="text-xs text-amber-800">{{ pending_nudge.message }}</p>
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('admin.resolve_nudge', nudge_id=pending_nudge.id) }}">
+                <button type="submit" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg transition shadow-sm">
+                    Mark as Handled
+                </button>
+            </form>
+        </div>
+    {% endif %}
+
+    <!-- Shop Financial Summary Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Monthly Target</span>
+            <div class="text-lg font-black text-slate-900 mt-1">{{ summary.target_rent|inr }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">{{ selected_month|month_name }} Paid</span>
+            <div class="text-lg font-black text-emerald-600 mt-1">{{ summary.total_paid_this_month|inr }}</div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">This Month Left</span>
+            <div class="text-lg font-black {% if summary.this_month_remaining > 0 %}text-slate-800{% else %}text-emerald-600{% endif %} mt-1">
+                {{ summary.this_month_remaining|inr }}
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Past Pending</span>
+            <div class="text-lg font-black {% if summary.past_pending > 0 %}text-rose-600{% else %}text-slate-400{% endif %} mt-1">
+                {{ summary.past_pending|inr }}
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-xl border border-slate-200/80 shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Advance Credit</span>
+            <div class="text-lg font-black {% if summary.advance > 0 %}text-emerald-600{% else %}text-slate-400{% endif %} mt-1">
+                {{ summary.advance|inr }}
+            </div>
+        </div>
+        <div class="bg-slate-900 text-white p-4 rounded-xl shadow-sm">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Total Net Due</span>
+            <div class="text-lg font-black text-white mt-1">{{ summary.total_net_due|inr }}</div>
+        </div>
+    </div>
+
+    <!-- Main 2-Column Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left: Record Payment & Settings (5 cols) -->
+        <div class="lg:col-span-5 space-y-6">
+            <!-- Record Daily Payment Card -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+                <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <i class="fa-solid fa-plus font-bold text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">Record Daily Payment</h3>
+                        <p class="text-xs text-slate-500">Log money received from {{ shop.name }}</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('admin.shop_detail', shop_id=shop.id, year=selected_year, month=selected_month) }}" class="space-y-4">
+                    <input type="hidden" name="action" value="add_payment">
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Date</label>
+                            <input type="date" name="payment_date" value="{{ today.strftime('%Y-%m-%d') }}" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Amount (₹)</label>
+                            <input type="number" step="0.01" name="amount" placeholder="e.g. 500" required
+                                class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm font-black text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Payment Mode</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-500 has-[:checked]:text-emerald-800">
+                                <input type="radio" name="payment_mode" value="UPI" checked class="hidden">
+                                <i class="fa-solid fa-mobile-screen"></i> UPI
+                            </label>
+                            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-500 has-[:checked]:text-emerald-800">
+                                <input type="radio" name="payment_mode" value="CASH" class="hidden">
+                                <i class="fa-solid fa-money-bill-wave"></i> Cash
+                            </label>
+                            <label class="flex items-center justify-center gap-1.5 p-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 cursor-pointer hover:bg-slate-50 has-[:checked]:bg-emerald-50 has-[:checked]:border-emerald-500 has-[:checked]:text-emerald-800">
+                                <input type="radio" name="payment_mode" value="BANK_TRANSFER" class="hidden">
+                                <i class="fa-solid fa-building-columns"></i> Bank
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Remarks / Note (Optional)</label>
+                        <input type="text" name="notes" placeholder="e.g. Morning GPay / Handover"
+                            class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+
+                    <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-check"></i>
+                        <span>Save Payment</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Shop Settings & Rent Configuration Card -->
+            <details class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden group">
+                <summary class="p-4 px-6 font-bold text-sm text-slate-800 cursor-pointer flex items-center justify-between hover:bg-slate-50 transition">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-gear text-slate-400"></i>
+                        <span>Shop Settings & Rent Target</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
+                </summary>
+
+                <div class="p-6 pt-2 border-t border-slate-100">
+                    <form method="POST" action="{{ url_for('admin.shop_detail', shop_id=shop.id, year=selected_year, month=selected_month) }}" class="space-y-3.5">
+                        <input type="hidden" name="action" value="update_settings">
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase">Shop Name</label>
+                            <input type="text" name="name" value="{{ shop.name }}" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Tenant Name</label>
+                                <input type="text" name="tenant_name" value="{{ shop.tenant_name or '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Phone Number</label>
+                                <input type="text" name="phone" value="{{ shop.phone or '' }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Monthly Rent (₹)</label>
+                                <input type="number" step="0.01" name="monthly_rent" value="{{ shop.monthly_rent }}" required class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-black">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Status</label>
+                                <select name="status" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                                    <option value="ACTIVE" {% if shop.status == 'ACTIVE' %}selected{% endif %}>Active / Rented</option>
+                                    <option value="VACANT" {% if shop.status == 'VACANT' %}selected{% endif %}>Vacant / Not Rented</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Past Pending Dues (₹)</label>
+                                <input type="number" step="0.01" name="past_pending_balance" value="{{ shop.past_pending_balance }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-600 uppercase">Advance Credit (₹)</label>
+                                <input type="number" step="0.01" name="advance_balance" value="{{ shop.advance_balance }}" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-600 uppercase">Vendor 4-Digit PIN</label>
+                            <input type="text" name="pin" value="{{ shop.pin }}" maxlength="6" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono font-bold">
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition">
+                            Save Shop Changes
+                        </button>
+                    </form>
+                </div>
+            </details>
+        </div>
+
+        <!-- Right: Payments Ledger Table (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h3 class="font-bold text-slate-900 text-base">Payment Ledger</h3>
+                        <p class="text-xs text-slate-500">Showing payments for {{ selected_month|month_name }} {{ selected_year }}</p>
+                    </div>
+                    <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full">
+                        {{ payments|length }} Entries
+                    </span>
+                </div>
+
+                {% if payments %}
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-100 text-slate-400 uppercase font-bold text-[10px] tracking-wider">
+                                    <th class="py-3 px-4">Date</th>
+                                    <th class="py-3 px-4">Amount</th>
+                                    <th class="py-3 px-4">Mode</th>
+                                    <th class="py-3 px-4">Notes</th>
+                                    <th class="py-3 px-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                {% for p in payments %}
+                                    <tr class="hover:bg-slate-50/70 transition">
+                                        <td class="py-3.5 px-4 font-semibold text-slate-900 whitespace-nowrap">
+                                            {{ p.payment_date|format_date }}
+                                        </td>
+                                        <td class="py-3.5 px-4 font-black text-emerald-600 text-sm whitespace-nowrap">
+                                            {{ p.amount|inr }}
+                                        </td>
+                                        <td class="py-3.5 px-4 whitespace-nowrap">
+                                            {% if p.payment_mode == 'UPI' %}
+                                                <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded text-[11px]">
+                                                    <i class="fa-solid fa-mobile-screen text-[10px]"></i> UPI
+                                                </span>
+                                            {% elif p.payment_mode == 'CASH' %}
+                                                <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded text-[11px]">
+                                                    <i class="fa-solid fa-money-bill text-[10px]"></i> Cash
+                                                </span>
+                                            {% else %}
+                                                <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded text-[11px]">
+                                                    Bank
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3.5 px-4 text-slate-500 max-w-xs truncate">
+                                            {{ p.notes or '-' }}
+                                        </td>
+                                        <td class="py-3.5 px-4 text-right whitespace-nowrap">
+                                            <form method="POST" action="{{ url_for('admin.delete_payment', payment_id=p.id) }}" onsubmit="return confirm('Delete this payment entry of {{ p.amount|inr }}?')">
+                                                <button type="submit" class="text-rose-500 hover:text-rose-700 p-1 transition" title="Delete Payment">
+                                                    <i class="fa-solid fa-trash-can"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="py-12 text-center text-slate-400">
+                        <i class="fa-solid fa-receipt text-3xl mb-2 text-slate-300 block"></i>
+                        <p class="text-sm font-medium">No payments recorded for {{ selected_month|month_name }} {{ selected_year }}.</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Use the form on the left to record daily collections.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

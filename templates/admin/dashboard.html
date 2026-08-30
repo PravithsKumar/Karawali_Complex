@@ -1,0 +1,237 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Karavali Complex{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Top Header & Filter Controls -->
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div>
+            <div class="flex items-center gap-2">
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight">Admin Overview</h1>
+                <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Live</span>
+            </div>
+            <p class="text-sm text-slate-500 mt-0.5">Karavali Complex • 9 Commercial Units • Rent & Ledger Dashboard</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Month Selector Form -->
+            <form method="GET" action="{{ url_for('admin.dashboard') }}" class="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                <select name="month" onchange="this.form.submit()" class="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer">
+                    {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if m == selected_month %}selected{% endif %}>{{ m|month_name }}</option>
+                    {% endfor %}
+                </select>
+                <select name="year" onchange="this.form.submit()" class="bg-transparent text-sm font-semibold text-slate-800 px-2 py-1 outline-none cursor-pointer">
+                    {% for y in range(current_year - 2, current_year + 3) %}
+                        <option value="{{ y }}" {% if y == selected_year %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+
+            <a href="{{ url_for('admin.daily_sheet') }}" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-2">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Quick Daily Sheet</span>
+            </a>
+
+            <a href="{{ url_for('admin.profile') }}" class="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold rounded-xl border border-slate-200 transition flex items-center gap-2" title="Account Settings">
+                <i class="fa-solid fa-gear"></i>
+                <span class="hidden sm:inline">Settings</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- KPI Summary Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Today's Collection -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-2 -bottom-2 w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center opacity-60">
+                <i class="fa-solid fa-coins text-3xl text-emerald-600"></i>
+            </div>
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Today's Collections</span>
+                <div class="text-2xl font-extrabold text-slate-900 mt-1">{{ total_collected_today|inr }}</div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex items-center gap-3 text-xs text-slate-500 font-medium">
+                <span><i class="fa-solid fa-money-bill text-emerald-500 mr-1"></i> Cash: {{ today_cash|inr }}</span>
+                <span>•</span>
+                <span><i class="fa-solid fa-mobile-screen text-blue-500 mr-1"></i> UPI: {{ today_upi|inr }}</span>
+            </div>
+        </div>
+
+        <!-- This Month's Collection -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-2 -bottom-2 w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center opacity-60">
+                <i class="fa-solid fa-calendar-days text-3xl text-blue-600"></i>
+            </div>
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">{{ selected_month|month_name }} Collections</span>
+                <div class="text-2xl font-extrabold text-blue-600 mt-1">{{ total_collected_month|inr }}</div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium flex justify-between">
+                <span>Target: {{ total_target_rent|inr }}</span>
+                <span class="font-bold text-slate-700">
+                    {{ ((total_collected_month / total_target_rent * 100) if total_target_rent > 0 else 0)|round(1) }}%
+                </span>
+            </div>
+        </div>
+
+        <!-- Building Past Pending Arrears -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-2 -bottom-2 w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center opacity-60">
+                <i class="fa-solid fa-clock-rotate-left text-3xl text-rose-500"></i>
+            </div>
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Past Pending Dues</span>
+                <div class="text-2xl font-extrabold {% if total_building_pending > 0 %}text-rose-600{% else %}text-slate-800{% endif %} mt-1">{{ total_building_pending|inr }}</div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium flex justify-between">
+                <span>Month Left: <span class="font-bold text-slate-700">{{ total_this_month_remaining|inr }}</span></span>
+                {% if total_building_advance > 0 %}
+                    <span>Advance: <span class="font-bold text-emerald-600">{{ total_building_advance|inr }}</span></span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Nudges Alert Banner -->
+        <div class="bg-white p-5 rounded-2xl border {% if pending_nudges_count > 0 %}border-amber-400 bg-amber-50/40 shadow-amber-500/10{% else %}border-slate-200/80{% endif %} shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div class="absolute -right-2 -bottom-2 w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center opacity-60">
+                <i class="fa-solid fa-bell text-3xl text-amber-500"></i>
+            </div>
+            <div>
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Vendor Nudges</span>
+                <div class="text-2xl font-extrabold {% if pending_nudges_count > 0 %}text-amber-600{% else %}text-slate-700{% endif %} mt-1">
+                    {{ pending_nudges_count }} Pending
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-slate-500 font-medium">
+                {% if pending_nudges_count > 0 %}
+                    <span class="text-amber-700 font-bold flex items-center gap-1">
+                        <i class="fa-solid fa-bell animate-bounce text-amber-600"></i> Shopkeeper requested update!
+                    </span>
+                {% else %}
+                    <span class="text-slate-400">All updates up to date</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 9 Shop Cards Section -->
+    <div class="space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>Commercial Shops</span>
+                <span class="text-xs font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">9 Units</span>
+            </h2>
+            <span class="text-xs text-slate-500">Click any shop card to enter daily payment or edit ledger</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for item in shop_cards %}
+                {% set s = item.shop %}
+                {% set sum = item.summary %}
+                <div class="bg-white rounded-2xl border transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 flex flex-col justify-between overflow-hidden
+                    {% if item.has_nudge %} border-amber-400 shadow-md shadow-amber-500/10 ring-2 ring-amber-400/30
+                    {% elif not s.is_active %} border-dashed border-slate-300 bg-slate-50/50 opacity-80
+                    {% else %} border-slate-200/80 shadow-sm
+                    {% endif %}">
+                    
+                    <!-- Card Top Banner -->
+                    <div class="p-5 pb-4">
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2.5">
+                                <span class="w-8 h-8 rounded-xl bg-slate-900 text-white font-bold text-sm flex items-center justify-center shadow-sm">
+                                    {{ s.shop_number }}
+                                </span>
+                                <div>
+                                    <h3 class="font-bold text-slate-900 text-base leading-snug">{{ s.name }}</h3>
+                                    <span class="text-xs text-slate-500">{{ s.tenant_name or 'No tenant assigned' }}</span>
+                                </div>
+                            </div>
+                            <div>
+                                {% if s.is_active %}
+                                    <span class="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Active
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 bg-slate-100 text-slate-500 text-xs font-bold px-2 py-0.5 rounded-full border border-slate-300">
+                                        Vacant
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Nudge Alert Badge (If active) -->
+                        {% if item.has_nudge %}
+                            <div class="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center justify-between">
+                                <span class="flex items-center gap-1.5">
+                                    <i class="fa-solid fa-bell text-amber-600 animate-pulse"></i>
+                                    <span>Vendor requested today's update</span>
+                                </span>
+                                <form method="POST" action="{{ url_for('admin.resolve_nudge', nudge_id=s.nudges.filter_by(nudge_date=today, status='PENDING').first().id) }}">
+                                    <button type="submit" class="text-[11px] text-amber-900 underline hover:text-amber-700">Dismiss</button>
+                                </form>
+                            </div>
+                        {% endif %}
+
+                        <!-- Financial Snapshot -->
+                        {% if s.is_active %}
+                            <div class="space-y-3 pt-2">
+                                <!-- Rent Target & Paid Progress -->
+                                <div>
+                                    <div class="flex justify-between items-baseline text-xs mb-1.5">
+                                        <span class="text-slate-500 font-medium">Monthly Target: <span class="font-bold text-slate-800">{{ s.monthly_rent|inr }}</span></span>
+                                        <span class="font-extrabold text-emerald-600">{{ sum.total_paid_this_month|inr }} Paid</span>
+                                    </div>
+                                    <!-- Progress Bar -->
+                                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                        <div class="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-300" style="width: {{ sum.percentage_paid }}%"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Balances Breakdown -->
+                                <div class="grid grid-cols-2 gap-2 pt-2 text-xs">
+                                    <div class="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                        <span class="text-slate-400 block font-medium">This Month Remaining</span>
+                                        <span class="font-bold {% if sum.this_month_remaining > 0 %}text-slate-800{% else %}text-emerald-600{% endif %}">
+                                            {{ sum.this_month_remaining|inr }}
+                                        </span>
+                                    </div>
+                                    <div class="p-2 rounded-lg bg-slate-50 border border-slate-100">
+                                        <span class="text-slate-400 block font-medium">Pending Balance</span>
+                                        <span class="font-bold {% if sum.past_pending > 0 %}text-rose-600{% else %}text-slate-400{% endif %}">
+                                            {{ sum.past_pending|inr }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {% if sum.advance > 0 %}
+                                    <div class="text-xs bg-emerald-50 text-emerald-800 px-2 py-1 rounded-md font-semibold flex items-center justify-between">
+                                        <span>Advance Credit for Next Month:</span>
+                                        <span>{{ sum.advance|inr }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="py-6 text-center text-slate-400 text-xs">
+                                <i class="fa-solid fa-door-closed text-2xl mb-1 text-slate-300 block"></i>
+                                Currently unoccupied. Click below to activate or edit rent.
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Card Bottom Action -->
+                    <div class="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                        <span class="text-xs text-slate-400 font-mono">PIN: {{ s.pin }}</span>
+                        <a href="{{ url_for('admin.shop_detail', shop_id=s.id, year=selected_year, month=selected_month) }}" 
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-white hover:bg-slate-900 text-slate-800 hover:text-white border border-slate-200 transition shadow-sm flex items-center gap-1.5">
+                            <span>Open Ledger</span>
+                            <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

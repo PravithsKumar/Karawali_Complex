@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Karavali Complex - Daily Rent & Ledger{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        brand: {
+                            navy: '#0f172a',
+                            gold: '#f59e0b',
+                            emerald: '#10b981',
+                            rose: '#f43f5e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800 antialiased">
+    <!-- Navbar -->
+    <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <!-- Logo & Brand -->
+                <div class="flex items-center space-x-3">
+                    <a href="{{ url_for('auth.index') }}" class="flex items-center space-x-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-md shadow-emerald-500/20">
+                            <i class="fa-solid fa-building text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-lg tracking-tight block leading-tight">Karavali Complex</span>
+                            <span class="text-[11px] text-slate-400 font-medium tracking-wide uppercase">Daily Rent Tracker</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Nav Items -->
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    {% if current_user.is_authenticated %}
+                        {% if current_user.is_admin %}
+                            <a href="{{ url_for('admin.dashboard') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-1.5">
+                                <i class="fa-solid fa-table-columns text-emerald-400"></i>
+                                <span class="hidden sm:inline">Dashboard</span>
+                            </a>
+                            <a href="{{ url_for('admin.daily_sheet') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-check text-blue-400"></i>
+                                <span class="hidden sm:inline">Daily Sheet</span>
+                            </a>
+                            <a href="{{ url_for('admin.profile') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-1.5" title="Admin Account Settings">
+                                <i class="fa-solid fa-gear text-slate-400"></i>
+                                <span class="hidden sm:inline">Settings</span>
+                            </a>
+                        {% elif current_user.shop_id %}
+                            <a href="{{ url_for('vendor.shop_portal', shop_id=current_user.shop_id) }}" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+                                <i class="fa-solid fa-store"></i>
+                                <span>My Shop</span>
+                            </a>
+                        {% endif %}
+                        <a href="{{ url_for('auth.logout') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center gap-1.5" title="Logout">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                            <span class="hidden sm:inline">Logout</span>
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('auth.login') }}" class="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition">
+                            Sign In
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Flash Messages -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="space-y-2">
+                    {% for category, message in messages %}
+                        <div class="flex items-center justify-between p-4 rounded-xl text-sm font-medium shadow-sm transition-all duration-200
+                            {% if category == 'success' %} bg-emerald-50 text-emerald-800 border border-emerald-200
+                            {% elif category == 'error' %} bg-rose-50 text-rose-800 border border-rose-200
+                            {% elif category == 'info' %} bg-sky-50 text-sky-800 border border-sky-200
+                            {% else %} bg-amber-50 text-amber-800 border border-amber-200
+                            {% endif %}">
+                            <div class="flex items-center gap-3">
+                                {% if category == 'success' %}
+                                    <i class="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                                {% elif category == 'error' %}
+                                    <i class="fa-solid fa-circle-exclamation text-rose-500 text-base"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-circle-info text-sky-500 text-base"></i>
+                                {% endif %}
+                                <span>{{ message }}</span>
+                            </div>
+                            <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600 transition">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-700">Karavali Complex</span>
+                <span>•</span>
+                <span>9 Commercial Units</span>
+            </div>
+            <div>
+                Daily Rent Management & Transparent Ledger System
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

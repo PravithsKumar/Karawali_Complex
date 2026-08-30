@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In - Karavali Complex{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto py-8">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-100 p-6 sm:p-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3">
+                <i class="fa-solid fa-lock text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-slate-900">Welcome Back</h1>
+            <p class="text-sm text-slate-500 mt-1">Select your role to access the rent ledger</p>
+        </div>
+
+        <!-- Role Toggle Tabs -->
+        <div class="grid grid-cols-2 p-1.5 bg-slate-100 rounded-xl mb-6">
+            <button type="button" id="tab-vendor" onclick="switchTab('vendor')" 
+                class="py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-slate-900 shadow-sm flex items-center justify-center gap-2">
+                <i class="fa-solid fa-store text-emerald-600"></i>
+                <span>Shopkeeper</span>
+            </button>
+            <button type="button" id="tab-admin" onclick="switchTab('admin')" 
+                class="py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2">
+                <i class="fa-solid fa-user-shield text-slate-400"></i>
+                <span>Admin</span>
+            </button>
+        </div>
+
+        <!-- Vendor Form -->
+        <form id="form-vendor" method="POST" action="{{ url_for('auth.login') }}" class="space-y-5">
+            <input type="hidden" name="login_type" value="vendor">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Select Your Shop</label>
+                <div class="relative">
+                    <select name="shop_id" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none appearance-none">
+                        <option value="" disabled selected>-- Choose your shop --</option>
+                        {% for shop in shops %}
+                            <option value="{{ shop.id }}">
+                                Shop {{ shop.shop_number }}: {{ shop.name }} {% if shop.status == 'VACANT' %}(Vacant){% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">4-Digit Security PIN</label>
+                <div class="relative">
+                    <input type="password" name="pin" maxlength="6" placeholder="Enter PIN (e.g. 1001)" required
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-medium tracking-widest focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <div class="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <i class="fa-solid fa-key text-sm"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-info text-[10px]"></i>
+                    Default PIN for Shop 1 is 1001, Shop 2 is 1002, etc.
+                </p>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-600/25 transition duration-150 flex items-center justify-center gap-2">
+                <span>View My Shop Ledger</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+
+        <!-- Admin Form -->
+        <form id="form-admin" method="POST" action="{{ url_for('auth.login') }}" class="space-y-5 hidden">
+            <input type="hidden" name="login_type" value="admin">
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Admin Username</label>
+                <div class="relative">
+                    <input type="text" name="username" placeholder="admin" value="admin" required
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <div class="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <i class="fa-solid fa-user text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Admin Password</label>
+                <div class="relative">
+                    <input type="password" name="password" placeholder="••••••••" required
+                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 text-sm font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none">
+                    <div class="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                        <i class="fa-solid fa-lock text-sm"></i>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-info text-[10px]"></i>
+                    Default password: <code class="bg-slate-100 px-1 py-0.5 rounded font-mono text-slate-700">admin123</code>
+                </p>
+            </div>
+
+            <button type="submit" class="w-full py-3.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold rounded-xl shadow-lg shadow-slate-900/20 transition duration-150 flex items-center justify-center gap-2">
+                <span>Sign In as Admin</span>
+                <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function switchTab(type) {
+        const tabVendor = document.getElementById('tab-vendor');
+        const tabAdmin = document.getElementById('tab-admin');
+        const formVendor = document.getElementById('form-vendor');
+        const formAdmin = document.getElementById('form-admin');
+
+        if (type === 'vendor') {
+            tabVendor.className = "py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-slate-900 shadow-sm flex items-center justify-center gap-2";
+            tabAdmin.className = "py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2";
+            formVendor.classList.remove('hidden');
+            formAdmin.classList.add('hidden');
+        } else {
+            tabAdmin.className = "py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-white text-slate-900 shadow-sm flex items-center justify-center gap-2";
+            tabVendor.className = "py-2 text-sm font-semibold rounded-lg transition-all duration-200 text-slate-600 hover:text-slate-900 flex items-center justify-center gap-2";
+            formAdmin.classList.remove('hidden');
+            formVendor.classList.add('hidden');
+        }
+    }
+</script>
+{% endblock %}
