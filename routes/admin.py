@@ -305,3 +305,66 @@ def resolve_nudge(nudge_id):
     db.session.commit()
     flash(f'Nudge for Shop {nudge.shop.shop_number} marked as resolved.', 'success')
     return redirect(request.referrer or url_for('admin.dashboard'))
+
+
+@admin_bp.route('/manage-shops', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def manage_shops():
+    shops = Shop.query.order_by(Shop.shop_number).all()
+    selected_shop_id = request.args.get('edit_id', type=int)
+    selected_shop = db.session.get(Shop, selected_shop_id) if selected_shop_id else None
+
+    if request.method == 'POST':
+        shop_id = request.form.get('shop_id', type=int)
+        shop = db.session.get(Shop, shop_id)
+        if not shop:
+            flash('Shop not found.', 'error')
+            return redirect(url_for('admin.manage_shops'))
+
+        name = request.form.get('name', '').strip()
+        tenant_name = request.form.get('tenant_name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        monthly_rent_str = request.form.get('monthly_rent', '0.00').strip()
+        pin = request.form.get('pin', '').strip()
+        status = request.form.get('status', 'ACTIVE')
+
+        if not name:
+            flash('Shop name cannot be empty.', 'error')
+            return redirect(url_for('admin.manage_shops', edit_id=shop.id))
+
+        if not pin or len(pin) < 4:
+            flash('PIN must be at least 4 digits.', 'error')
+            return redirect(url_for('admin.manage_shops', edit_id=shop.id))
+
+        try:
+            shop.name = name
+            shop.tenant_name = tenant_name
+            shop.phone = phone
+            shop.monthly_rent = Decimal(monthly_rent_str)
+            shop.status = status
+            shop.pin = pin
+
+            # Also update/sync the vendor user account's password hash
+            vendor_user = User.query.filter_by(role='VENDOR', shop_id=shop.id).first()
+            if vendor_user:
+                vendor_user.set_password(pin)
+            else:
+                vendor_user = User(
+                    username=f"shop_{shop.shop_number}",
+                    role='VENDOR',
+                    shop_id=shop.id
+                )
+                vendor_user.set_password(pin)
+                db.session.add(vendor_user)
+
+            db.session.commit()
+            flash(f'Successfully updated details for Shop {shop.shop_number} ({shop.name})!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating shop: {str(e)}', 'error')
+
+        return redirect(url_for('admin.manage_shops'))
+
+    return render_template('admin/manage_shops.html', shops=shops, selected_shop=selected_shop)
+
