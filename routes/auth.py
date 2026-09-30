@@ -16,15 +16,13 @@ def index():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        if current_user.is_admin:
-            return redirect(url_for('admin.dashboard'))
-        elif current_user.shop_id:
-            return redirect(url_for('vendor.shop_portal', shop_id=current_user.shop_id))
-
     shops = Shop.query.order_by(Shop.shop_number).all()
 
     if request.method == 'POST':
+        # Clear any existing session before logging into a new account
+        if current_user.is_authenticated:
+            logout_user()
+
         login_type = request.form.get('login_type', 'vendor')
 
         if login_type == 'admin':

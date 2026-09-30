@@ -66,6 +66,14 @@ def create_app():
             'today_date': date.today()
         }
 
+    @app.after_request
+    def set_cache_headers(response):
+        # Prevent browser back-button caching of authenticated state
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+
     return app
 
 app = create_app()
