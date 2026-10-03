@@ -16,6 +16,13 @@ def index():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
+    # If already logged in, redirect directly to dashboard/portal instead of showing login
+    if request.method == 'GET' and current_user.is_authenticated and request.args.get('switch') != '1':
+        if current_user.is_admin:
+            return redirect(url_for('admin.dashboard'))
+        elif current_user.shop_id:
+            return redirect(url_for('vendor.shop_portal', shop_id=current_user.shop_id))
+
     shops = Shop.query.order_by(Shop.shop_number).all()
 
     if request.method == 'POST':

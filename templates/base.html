@@ -61,7 +61,7 @@
 
                 <!-- Nav Items -->
                 <div class="flex items-center space-x-2 sm:space-x-4">
-                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_authenticated and request.endpoint != 'auth.login' %}
                         {% if current_user.is_admin %}
                             <a href="{{ url_for('admin.dashboard') }}" class="px-3 py-1.5 rounded-lg text-sm font-medium transition hover:bg-slate-800 text-slate-200 hover:text-white flex items-center gap-1.5">
                                 <i class="fa-solid fa-table-columns text-emerald-400"></i>
@@ -89,7 +89,7 @@
                             <i class="fa-solid fa-arrow-right-from-bracket"></i>
                             <span class="hidden sm:inline">Logout</span>
                         </a>
-                    {% else %}
+                    {% elif not current_user.is_authenticated and request.endpoint != 'auth.login' %}
                         <a href="{{ url_for('auth.login') }}" class="px-4 py-2 rounded-lg text-sm font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition">
                             Sign In
                         </a>
